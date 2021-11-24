@@ -1,4 +1,4 @@
-# steerable
+# Algebraic approach to CNN steerability
 This is an anonimous repository for the conference submission that contains the code for the experiments on steerable network architectures.
 
 The entry point is the notebook train_notebook.ipynb
