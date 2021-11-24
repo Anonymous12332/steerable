@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import MultiStepLR
 import os
 import time
-# import DenseModule
 import sys
 import numpy as np
 from equiv_tester import testForSymmetryRotationInvariance, testForAdditionInvariance
@@ -114,14 +113,9 @@ def get_data_transformer(dataAugmentation):
 def defineDataLoaders(dataset, trainBatchSize, testBatchSize, dataAugmentation):
     subnamed_datasets = ['Sun', 'Squares', 'Lines']
     loaders = {"Cifar-10": getCifar10DataLoaders,
-               "MnistRot": getMnistRotDataLoaders,
                "Cifar-100": getCifar100DataLoaders,
-               "Planes": getPlanesDataLoaders,
                "Squares": getSquaresDataLoaders,
-               'Sun': getSunDataLoaders,
-               'Lines': getLinesDataLoaders,
-               'Reface160': getReface160DataLoaders,
-               'Reface256': getReface256DataLoaders}
+               'Lines': getLinesDataLoaders}
     for subname in subnamed_datasets:
         if subname in dataset:
             return loaders[subname](trainBatchSize, testBatchSize, dataAugmentation, '_'.join(dataset.split('_')[1:]))
@@ -187,130 +181,6 @@ def getLinesDataLoaders(trainBatchSize, testBatchSize, dataAugmentation, subname
     shape = (1, 64, 64)
     return train_loader, train_test_loader, test_loader, classes, shape
 
-
-def getSunDataLoaders(trainBatchSize, testBatchSize, dataAugmentation, subname):
-    dataset_subtype, num_elems = subname.split('_')[:2]
-    planes_dir = f'/content/drive/MyDrive/PytorchExperiments/sun_{dataset_subtype}'
-    # planes_dir = f'/home/slavko/Documents/conferences/iclr2022/experiments/SUN2/{dataset_subtype}'
-    # transform_train = get_data_transformer(dataAugmentation)
-    # transform_test = get_data_transformer([])
-
-    test_ims_path = glob(planes_dir + '/test_ims_*.npy')[0]
-    test_vecs_path = glob(planes_dir + '/test_vecs_*.npy')[0]
-
-    train_ims = np.load(planes_dir + f'/train_ims_{num_elems}.npy')
-    train_labels = np.load(planes_dir + f'/train_vecs_{num_elems}.npy')
-    test_ims = np.load(test_ims_path)
-    test_labels = np.load(test_vecs_path)
-
-    # double_aug = ('vec' in dataAugmentation[0])
-
-    trainset = CustomDoubleTensorDataset(train_ims, train_labels, aug=dataAugmentation, vec_behaviour='vec')
-    traintestset = CustomDoubleTensorDataset(train_ims, train_labels, aug=[], vec_behaviour='vec')
-    testset = CustomDoubleTensorDataset(test_ims, test_labels, aug=[], vec_behaviour='vec')
-
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=True)
-    train_test_loader = torch.utils.data.DataLoader(traintestset, batch_size=trainBatchSize, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=testBatchSize, shuffle=False)
-    classes = ['not_plane', 'plane']
-    shape = (3, 128, 128)
-    return train_loader, train_test_loader, test_loader, classes, shape
-
-
-def getPlanesDataLoaders(trainBatchSize, testBatchSize, dataAugmentation):
-    planes_dir = '/content/drive/MyDrive/PytorchExperiments/planes_dataset'
-    # planes_dir = '/home/slavko/Documents/conferences/iclr2022/experiments/planes/'
-    transform_train = get_data_transformer(dataAugmentation)
-    transform_test = get_data_transformer([])
-
-    train_ims = np.load(planes_dir + '/train_ims.npy')
-    train_labels = np.load(planes_dir + '/train_labels.npy')
-    test_ims = np.load(planes_dir + '/test_ims.npy')
-    test_labels = np.load(planes_dir + '/test_labels.npy')
-
-    trainset = CustomTensorDataset(train_ims, train_labels, transform=transform_train)
-    traintestset = CustomTensorDataset(train_ims, train_labels, transform=transform_test)
-    testset = CustomTensorDataset(test_ims, test_labels, transform=transform_test)
-
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=True)
-    train_test_loader = torch.utils.data.DataLoader(traintestset, batch_size=trainBatchSize, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=testBatchSize, shuffle=False)
-    classes = ['not_plane', 'plane']
-    shape = (3, 20, 20)
-    return train_loader, train_test_loader, test_loader, classes, shape
-
-
-def getReface160DataLoaders(trainBatchSize, testBatchSize, dataAugmentation):
-    planes_dir = '/content/drive/MyDrive/PytorchExperiments/reface160'
-    # planes_dir = '/home/slavko/Documents/reface/reface_160'
-    transform_train = get_data_transformer(dataAugmentation)
-    transform_test = get_data_transformer([])
-
-    train_ims = np.load(planes_dir + '/train_ims_160.npy')
-    train_labels = np.load(planes_dir + '/train_labels_160.npy').astype(np.int32)
-    test_ims = np.load(planes_dir + '/test_ims_160.npy')
-    test_labels = np.load(planes_dir + '/test_labels_160.npy').astype(np.int32)
-
-    trainset = CustomTensorDataset(train_ims, train_labels, transform=transform_train, to_float=False)
-    traintestset = CustomTensorDataset(train_ims, train_labels, transform=transform_test, to_float=False)
-    testset = CustomTensorDataset(test_ims, test_labels, transform=transform_test, to_float=False)
-
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=True)
-    train_test_loader = torch.utils.data.DataLoader(traintestset, batch_size=trainBatchSize, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=testBatchSize, shuffle=False)
-    classes = ['real', 'fake']
-    shape = (3, 160, 160)
-    train_proportion = trainset.get_ones_proportion()
-    train_loader.bin_proportion = train_proportion
-    return train_loader, train_test_loader, test_loader, classes, shape
-
-
-def getReface256DataLoaders(trainBatchSize, testBatchSize, dataAugmentation):
-    planes_dir = '/content/drive/MyDrive/PytorchExperiments/reface256'
-    # planes_dir = '/home/slavko/Documents/reface/reface_256'
-    transform_train = get_data_transformer(dataAugmentation)
-    transform_test = get_data_transformer([])
-
-    train_ims = np.load(planes_dir + '/train_ims_256.npy')
-    train_labels = np.load(planes_dir + '/train_labels_256.npy').astype(np.int32)
-    test_ims = np.load(planes_dir + '/test_ims_256.npy')
-    test_labels = np.load(planes_dir + '/test_labels_256.npy').astype(np.int32)
-
-    trainset = CustomTensorDataset(train_ims, train_labels, transform=transform_train, to_float=False)
-    traintestset = CustomTensorDataset(train_ims, train_labels, transform=transform_test, to_float=False)
-    testset = CustomTensorDataset(test_ims, test_labels, transform=transform_test, to_float=False)
-
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=True)
-    train_test_loader = torch.utils.data.DataLoader(traintestset, batch_size=trainBatchSize, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=testBatchSize, shuffle=False)
-    classes = ['real', 'fake']
-    shape = (3, 256, 256)
-    train_proportion = trainset.get_ones_proportion()
-    train_loader.bin_proportion = train_proportion
-    return train_loader, train_test_loader, test_loader, classes, shape
-
-
-def getMnistRotDataLoaders(trainBatchSize, testBatchSize, dataAugmentation):
-    mnist_dir = 'data/mnist_rot'
-    train = np.load(mnist_dir + '/rotated_train.npz')
-    valid = np.load(mnist_dir + '/rotated_valid.npz')
-    test = np.load(mnist_dir + '/rotated_test.npz')
-    data = {}
-    data['train_x'] = torch.tensor(np.vstack((train['x'], valid['x'])).reshape(-1, 1, 28, 28))
-    data['train_y'] = torch.tensor(np.hstack((train['y'], valid['y']))).long()
-    data['test_x'] = torch.tensor(test['x'].reshape(-1, 1, 28, 28))
-    data['test_y'] = torch.tensor(test['y']).long()
-    # if (torch.cuda.is_available()):
-    #    for key in data.keys():
-    #        data[key] = data[key].cuda()
-    trainset = torch.utils.data.TensorDataset(data['train_x'], data['train_y'])
-    testset = torch.utils.data.TensorDataset(data['test_x'], data['test_y'])
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=True, num_workers=4)
-    train_test_loader = torch.utils.data.DataLoader(trainset, batch_size=trainBatchSize, shuffle=False, num_workers=4)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=testBatchSize, shuffle=False, num_workers=4)
-    classes = tuple([str(i) for i in range(10)])
-    shape = (1, 28, 28)
-    return train_loader, train_test_loader, test_loader, classes, shape
 
 
 # import, load and normalize CIFAR
